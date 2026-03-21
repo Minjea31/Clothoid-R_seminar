@@ -1,0 +1,220 @@
+# Clothoid-R Camera Seminar
+
+이 저장소는 크게 두 부분으로 나뉩니다.
+
+- 훈련
+- `ros2-detect`
+
+## 훈련
+
+훈련 환경 구축은 오로지 로컬 환경에서 진행합니다.
+
+### 환경 구축
+
+`conda`가 설치되어 있지 않다면 먼저 아래 자료를 참고해서 설치합니다.
+
+- Ubuntu 22.04: <https://gosury32.tistory.com/14>
+- Ubuntu 24.04: <https://osg.kr/archives/3899>
+
+이후 아래 순서대로 환경을 구성합니다.
+
+```bash
+conda create -n yolo python=3.10.9
+conda activate yolo
+git clone https://github.com/Minjea31/Clothoid-R_seminar.git
+cd Clothoid-R_seminar/yolov12/yolov12
+pip install -r requirements.txt
+pip install -e .
+pip install scikit-learn
+```
+
+### `baseline_model` 훈련
+
+```bash
+python train_baseline_model.py
+```
+
+최종 모델은 `checkpoint` 내부의 `baseline` 계열 마지막 폴더에 있는 `weights/best.pt`입니다.
+
+### Pruning 후 모델 훈련
+
+```bash
+python pruning_finetuning.py
+```
+
+최종 모델은 `checkpoint` 내부의 `pruned` 계열 마지막 폴더에 있는 `weights/best.pt`입니다.
+
+또한 `pruned_yaml` 폴더 안에는 pruning 모델에 대응하는 YAML 파일이 있습니다.
+
+Pruning 모델은 `.pt` 파일과 `.yaml` 파일이 둘 다 있어야 정상적으로 사용할 수 있습니다.
+
+## `ros2-detect`
+
+YOLO를 실행하려면 이쪽도 별도 환경 구성이 필요합니다. Docker를 사용하는 경우에는 아래처럼 Miniconda를 설치합니다.
+
+```bash
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source ~/.bashrc
+```
+
+### 실행 방법
+
+모든 터미널에서 아래 공통 명령어를 먼저 실행합니다.
+
+```bash
+source /opt/ros/kilted/setup.bash
+cd Autonomous-Racing-Simulator/simulate_ws
+colcon build
+source install/setup.bash
+```
+
+### 1번 터미널: Open map
+
+맵을 실행하는 터미널입니다.
+
+```bash
+source /opt/ros/kilted/setup.bash
+cd Autonomous-Racing-Simulator/simulate_ws
+colcon build --symlink-install
+source install/setup.bash
+gz sim -r src/server/map/racemap.sdf
+```
+
+### 2번 터미널: ERP42 제어 차량
+
+제어할 ERP42를 실행하는 터미널입니다.
+
+```bash
+source /opt/ros/kilted/setup.bash
+cd Autonomous-Racing-Simulator/simulate_ws
+colcon build
+source install/setup.bash
+ros2 launch server spawn_car.launch.py
+```
+
+`python3 src/server/src/key_teleop.py`는 ERP-42 control 노드입니다. 키보드로 ERP-42를 직접 조작할 때는 아래 명령어를 실행합니다.
+
+```bash
+conda deactivate
+python3 src/server/src/key_teleop.py
+```
+
+### 3번 터미널: 객체 ERP42
+
+객체 역할을 하는 ERP42를 실행하는 터미널입니다.
+
+```bash
+source /opt/ros/kilted/setup.bash
+cd Autonomous-Racing-Simulator/simulate_ws
+colcon build
+source install/setup.bash
+ros2 launch server spawn_car.launch.py car_name:=test x_pos:=5 y_pos:=0 z_pos:=0.3
+```
+
+### 학습용 이미지 데이터 추출
+
+YOLO를 학습시키려면 이미지 형태의 데이터가 필요합니다. 아래는 해당 데이터를 얻는 방법입니다.
+
+#### Bag 저장 방법
+
+아래 명령어로 bag 파일을 저장할 수 있습니다.
+
+```bash
+ros2 bag record /clock /rosout /car1/camera/image_raw -o erp42_bag
+```
+
+#### Bag 재생 방법
+
+bag 파일을 재생할 때는 아래 명령어를 사용합니다.
+
+```bash
+ros2 bag play erp42_bag
+```
+
+또는 `clock` 옵션을 포함해서 아래처럼 실행할 수 있습니다.
+
+```bash
+ros2 bag play ../erp42_bag --clock
+```
+
+#### 이미지 프레임 저장 방법
+
+bag 재생과 함께 아래 명령어를 실행하면 이미지를 프레임 단위로 저장할 수 있습니다.
+
+```bash
+cd ~/Clothoid-R_seminar
+python3 save_images.py
+```
+
+기본값은 아래와 같습니다.
+
+- `topic_name`: `/car1/camera/image_raw`
+- `save_dir`: `/home/user/seminar/ERP42/extracted_images`
+- `save_interval`: `0.1`
+
+원하는 값으로 직접 인자를 줄 수도 있습니다.
+
+예를 들어 아래처럼 실행할 수 있습니다.
+
+```bash
+python3 save_images.py \
+  --topic-name /car1/camera/image_raw \
+  --save-dir /home/user/seminar/ERP42/extracted_images \
+  --save-interval 0.5
+```
+
+하이퍼파라미터 설명은 아래와 같습니다.
+
+- `--topic-name`: 구독할 이미지 토픽 이름
+- `--save-dir`: 이미지를 저장할 폴더 경로
+- `--save-interval`: 몇 초마다 이미지를 저장할지 설정하는 값
+
+### YOLOv12 실행 환경 구축
+
+```bash
+conda create -n clothoid python=3.12
+conda activate clothoid
+cd ~/Clothoid-R_seminar/yolov12/yolov12
+pip install huggingface_hub
+pip install "setuptools<80"
+pip install -e .
+pip uninstall numpy -y
+pip install numpy==1.26.4
+cd ../../camera_ws
+colcon build --symlink-install
+source install/setup.bash
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' \
+~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+source /opt/ros/kilted/setup.bash
+source ~/seminar/camera_ws/install/setup.bash
+```
+
+### Detect 노드 실행
+
+기본 YOLO detect 노드:
+
+```bash
+ros2 run yolo_detector_viewer detect_viewer
+```
+
+경량화된 YOLO detect 노드:
+
+```bash
+ros2 run yolo_detector_viewer pruned_detect_viewer
+```
+
+### 주의할 점
+
+다시 `colcon build`를 하면 `detect_viewer` 스크립트가 다시 생성되면서 shebang이 아래처럼 돌아갈 수 있습니다.
+
+```bash
+#!/usr/bin/python3
+```
+
+이 경우 같은 문제가 다시 생길 수 있으므로, 아래 명령어를 다시 실행해 줍니다.
+
+```bash
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' \
+~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+```
