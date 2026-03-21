@@ -26,8 +26,7 @@ cd Clothoid-R_seminar/yolov12/yolov12
 pip install -r requirements.txt
 pip install -e .
 pip install scikit-learn
-cp ~/Clothoid-R_seminar/yolov12/yolov12/utils/prune.py \
-/home/a/anaconda3/envs/yolo/lib/python3.10/site-packages/torch/nn/utils/prune.py
+cp ~/Clothoid-R_seminar/yolov12/yolov12/utils/prune.py /home/a/anaconda3/envs/yolo/lib/python3.10/site-packages/torch/nn/utils/prune.py
 ```
 
 ### `baseline_model` 훈련
@@ -186,8 +185,7 @@ pip install numpy==1.26.4
 cd ../../camera_ws
 colcon build --symlink-install
 source install/setup.bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' \
-~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
 source /opt/ros/kilted/setup.bash
 source ~/seminar/camera_ws/install/setup.bash
 ```
@@ -217,6 +215,5 @@ ros2 run yolo_detector_viewer pruned_detect_viewer
 이 경우 같은 문제가 다시 생길 수 있으므로, 아래 명령어를 다시 실행해 줍니다.
 
 ```bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' \
-~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
 ```
