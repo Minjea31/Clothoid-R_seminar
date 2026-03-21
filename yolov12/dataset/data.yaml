@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['ERP-42']
+
+roboflow:
+  workspace: clothoid-ryhpb
+  project: seminar-sutzd
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/clothoid-ryhpb/seminar-sutzd/dataset/1

@@ -1,0 +1,11 @@
+name: yolov12
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - scikit-learn==1.7.1
+  - pip
+  - pip:
+      - huggingface-hub==0.23.2
+      - safetensors==0.4.3
+prefix: /home/minjae/anaconda3/envs/yolov12
