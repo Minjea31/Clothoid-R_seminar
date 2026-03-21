@@ -26,6 +26,8 @@ cd Clothoid-R_seminar/yolov12/yolov12
 pip install -r requirements.txt
 pip install -e .
 pip install scikit-learn
+cp ~/Clothoid-R_seminar/yolov12/yolov12/utils/prune.py \
+/home/a/anaconda3/envs/yolo/lib/python3.10/site-packages/torch/nn/utils/prune.py
 ```
 
 ### `baseline_model` 훈련
