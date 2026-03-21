@@ -49,6 +49,10 @@ python pruning_finetuning.py
 
 Pruning 모델은 `.pt` 파일과 `.yaml` 파일이 둘 다 있어야 정상적으로 사용할 수 있습니다.
 
+### 주의할 점
+
+훈련 중 `dataset.yaml` 경로 오류가 발생하면 Home 디렉터리의 `.config/yolov12/settings.json` 파일을 열고 `"datasets_dir"` 뒤 경로를 사용하려는 `dataset.yaml` 파일이 있는 경로로 수정하면 됩니다.
+
 ## `ros2-detect`
 
 YOLO를 실행하려면 이쪽도 별도 환경 구성이 필요합니다. Docker를 사용하는 경우에는 아래처럼 Miniconda를 설치합니다.
