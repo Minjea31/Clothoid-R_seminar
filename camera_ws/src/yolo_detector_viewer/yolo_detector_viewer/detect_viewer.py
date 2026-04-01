@@ -56,6 +56,18 @@ class YoloDetectorViewer(Node):
         self.get_logger().info(f'Loaded YOLO model: {self.model_path}')
         self.get_logger().info(f'Confidence threshold: {self.confidence_threshold:.2f}')
 
+    def _resolve_label(self, names, cls_id: int) -> str:
+        if isinstance(names, dict):
+            label = names.get(cls_id, str(cls_id))
+        elif isinstance(names, (list, tuple)) and 0 <= cls_id < len(names):
+            label = names[cls_id]
+        else:
+            label = str(cls_id)
+
+        if label in {'car', '0'}:
+            return 'ERP-42'
+        return label
+
     def image_callback(self, msg: Image):
         try:
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -80,9 +92,7 @@ class YoloDetectorViewer(Node):
         for box in result.boxes:
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             cls_id = int(box.cls[0].item())
-            label = names.get(cls_id, str(cls_id))
-            if label == 'car':
-                label = 'ERP-42'
+            label = self._resolve_label(names, cls_id)
 
             pt1 = (int(x1), int(y1))
             pt2 = (int(x2), int(y2))

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/user/miniconda3/envs/yolov12/bin/python
 
 import os
 from pathlib import Path
@@ -69,6 +69,18 @@ class PrunedYoloDetectorViewer(Node):
         if not Path(self.weights_path).is_file():
             raise FileNotFoundError(f'YOLO weights file not found: {self.weights_path}')
 
+    def _resolve_label(self, names, cls_id: int) -> str:
+        if isinstance(names, dict):
+            label = names.get(cls_id, str(cls_id))
+        elif isinstance(names, (list, tuple)) and 0 <= cls_id < len(names):
+            label = names[cls_id]
+        else:
+            label = str(cls_id)
+
+        if label in {'car', '0'}:
+            return 'ERP-42'
+        return label
+
     def image_callback(self, msg: Image):
         try:
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
@@ -93,9 +105,7 @@ class PrunedYoloDetectorViewer(Node):
         for box in result.boxes:
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             cls_id = int(box.cls[0].item())
-            label = names.get(cls_id, str(cls_id))
-            if label == 'car':
-                label = 'ERP-42'
+            label = self._resolve_label(names, cls_id)
 
             pt1 = (int(x1), int(y1))
             pt2 = (int(x2), int(y2))

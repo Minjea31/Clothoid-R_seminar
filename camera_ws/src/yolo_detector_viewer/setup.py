@@ -23,6 +23,7 @@ setup(
         'console_scripts': [
             'detect_viewer = yolo_detector_viewer.detect_viewer:main',
             'pruned_detect_viewer = yolo_detector_viewer.pruned_detect_viewer:main',
+            'yolo_publisher = yolo_detector_viewer.yolo_publisher:main',
         ],
     },
 )
