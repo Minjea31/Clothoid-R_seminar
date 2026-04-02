@@ -14,4 +14,4 @@ docker run -it --privileged \
     --hostname $(hostname) \
     --network host \
     --name clothoid_seminar \
-    rth0824/autonomous-racing-simulator:ver1.0 bash
+    rth0824/autonomous-racing-simulator:ver1.1 bash
