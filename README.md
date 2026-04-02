@@ -49,6 +49,7 @@ python train_baseline_model.py
 ```
 
 최종 모델은 `checkpoint` 내부의 `baseline` 계열 마지막 폴더에 있는 `weights/best.pt`입니다.
+
 복사하여 `~/Clothoid-R_seminar/yolov12`에 위치해주고 baseline.pt로 바꿔주세요.
 
 ### Pruning 후 모델 훈련
