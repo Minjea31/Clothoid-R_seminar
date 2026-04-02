@@ -181,9 +181,6 @@ pip install numpy==1.26.4
 cd ../../camera_ws
 colcon build --symlink-install
 source install/setup.bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
-source /opt/ros/kilted/setup.bash
-source ~/seminar/camera_ws/install/setup.bash
 ```
 
 ### Detect 노드 실행
@@ -191,14 +188,40 @@ source ~/seminar/camera_ws/install/setup.bash
 기본 YOLO detect 노드:
 
 ```bash
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
 ros2 run yolo_detector_viewer detect_viewer
 ```
 
 경량화된 YOLO detect 노드:
 
 ```bash
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
 ros2 run yolo_detector_viewer pruned_detect_viewer
 ```
+
+YOLO bbox publisher 노드:
+
+```bash
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+ros2 run yolo_detector_viewer yolo_publisher
+```
+
+fusion 후 object publisher 노드:
+
+```bash
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/lidar_camera_fusion/lib/lidar_camera_fusion/detect_viewer
+ros2 run yolo_detector_viewer fusion_node
+```
+
+
+시각화 :
+
+```bash
+rviz2
+```
+
+Topic : `/object_point` -> Fixed Frame : `car1/lidar_link`
+
 
 ### 주의할 점
 
