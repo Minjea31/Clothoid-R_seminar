@@ -99,6 +99,7 @@ cd Autonomous-Racing-Simulator/simulate_ws
 colcon build --symlink-install
 source install/setup.bash
 # colcon build가 안될경우
+pip uninstall em -y
 python3 -m pip install empy catkin_pkg lark
 ```
 
@@ -166,6 +167,8 @@ ros2 bag play ../erp42_bag --clock
 
 bag 재생과 함께 아래 명령어를 실행하면 이미지를 프레임 단위로 저장할 수 있습니다.
 
+환경 구축이 필요하므로 `YOLOv12 실행 환경 구축` 부분을 먼저하고 실행시켜주세요.
+
 ```bash
 cd ~/Clothoid-R_seminar
 python3 utils/save_images.py
@@ -200,6 +203,7 @@ python3 save_images.py \
 ```bash
 conda create -n clothoid python=3.12
 conda activate clothoid
+source /opt/ros/kilted/setup.bash
 cd ~/Clothoid-R_seminar/yolov12/yolov12
 pip install huggingface_hub
 pip install "setuptools<80"
@@ -210,6 +214,16 @@ cd ../../camera_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+### 다음 노드를 실행시킬때 가상환경이 필요합니다.
+- detect_viewer
+- pruned_detect_viewer
+- yolo_publisher
+- fusion_node
+
+
+fusion_node는 yolo_publisher에 종속되어있습니다.
+
 
 ### Detect 노드 실행
 
@@ -223,24 +237,28 @@ ros2 run yolo_detector_viewer detect_viewer
 경량화된 YOLO detect 노드:
 
 ```bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/pruned_detect_viewer
 ros2 run yolo_detector_viewer pruned_detect_viewer
 ```
 
 YOLO bbox publisher 노드:
 
 ```bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/yolo_publisher
 ros2 run yolo_detector_viewer yolo_publisher
 ```
 
 fusion 후 object publisher 노드:
 
 ```bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/lidar_camera_fusion/lib/lidar_camera_fusion/detect_viewer
-ros2 run yolo_detector_viewer fusion_node
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/Clothoid-R_seminar/camera_ws/install/lidar_camera_fusion/lib/lidar_camera_fusion/fusion_node
+ros2 run lidar_camera_fusion fusion_node
 ```
 
+<p align="center">
+  <img src="images/original_roi.png" alt="original roi" width="48%" />
+  <img src="images/roi_point.png" alt="roi point" width="48%" />
+</p>
 
 시각화 :
 
@@ -262,5 +280,5 @@ Topic : `/object_point` -> Fixed Frame : `car1/lidar_link`
 이 경우 같은 문제가 다시 생길 수 있으므로, 아래 명령어를 다시 실행해 줍니다.
 
 ```bash
-sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/detect_viewer
+sed -i '1c #!/home/user/miniconda3/envs/clothoid/bin/python' ~/seminar/camera_ws/install/yolo_detector_viewer/lib/yolo_detector_viewer/~~~
 ```

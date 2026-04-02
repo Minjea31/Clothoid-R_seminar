@@ -13,7 +13,7 @@ from sensor_msgs.msg import Image
 
 
 DEFAULT_TOPIC_NAME = '/car1/camera/image_raw'
-DEFAULT_SAVE_DIR = '/home/user/seminar/ERP42/extracted_images'
+DEFAULT_SAVE_DIR = './extracted_images'
 DEFAULT_SAVE_INTERVAL = 0.1
 
 
