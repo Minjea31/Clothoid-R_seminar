@@ -23,7 +23,7 @@ class PrunedYoloDetectorViewer(Node):
         self.declare_parameter('image_topic', '/car1/camera/image_raw')
         self.declare_parameter('yaml_path', default_yaml_path)
         self.declare_parameter('weights_path', default_weights_path)
-        self.declare_parameter('confidence_threshold', 0.05)
+        self.declare_parameter('confidence_threshold', 0.6)
         self.declare_parameter('window_name', 'Pruned YOLO Detection')
 
         self.image_topic = self.get_parameter('image_topic').get_parameter_value().string_value

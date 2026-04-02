@@ -5,7 +5,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, default='baseline')
 parser.add_argument('--bs', type=int, default=8)
-parser.add_argument('--epoch', type=int, default=1)
+parser.add_argument('--epoch', type=int, default=600)
 parser.add_argument('--model_pt', type=str, default='yolov12n.pt')
 parser.add_argument('--resume', action='store_true')
 parser.add_argument('--data', type=str, default="../dataset.yaml")
