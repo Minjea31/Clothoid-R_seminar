@@ -1,0 +1,18 @@
+train: data/images/train
+val: data/images/val
+test: data/images/test
+
+nc: 3
+names: ['ERP', 'drum', 'cone']
+
+roboflow:
+  workspace: clothoid-ryhpb
+  project: seminar-sutzd
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/clothoid-ryhpb/seminar-sutzd/dataset/1
+  
+# 라벨링 번호
+# 0번 : ERP
+# 1번 : drum
+# 2번 : cone

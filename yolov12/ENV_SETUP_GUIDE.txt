@@ -1,0 +1,90 @@
+Conda test environment setup guide
+
+This repository documents the environment in two files:
+
+1. pyproject.toml
+- Purpose: documents the core Python version and the main training dependencies.
+- Use this when you want to understand the intended project environment at a high level.
+
+2. requirements.tst
+- Purpose: exact pip freeze snapshot from the original conda "test" environment.
+- Use this when you want to reproduce the environment as closely as possible on another machine.
+
+
+Recommended setup order
+
+1. Move to the repository root
+
+   cd /path/to/yolov12
+
+2. Create the conda environment with the same Python version
+
+   conda create -n test python=3.10.9 -y
+
+3. Activate the environment
+
+   conda activate test
+
+4. Upgrade pip tools
+
+   python -m pip install --upgrade pip setuptools wheel
+
+5. Install the local YOLOv12 package in editable mode
+
+   python -m pip install -e ./yolov12
+
+6. Install the frozen package snapshot
+
+   python -m pip install -r requirements.tst
+
+
+Alternative setup
+
+If you do not need the exact frozen environment and only want the main project dependencies:
+
+   python -m pip install .
+   python -m pip install -e ./yolov12
+
+Note:
+- "python -m pip install ." uses the root pyproject.toml.
+- The local Ultralytics fork used by this project lives in ./yolov12, so the editable install is still recommended.
+
+
+Important notes
+
+1. requirements.tst contains an editable dependency:
+
+   -e ./yolov12
+
+   This means installation must be run from the repository root.
+
+2. requirements.tst was captured from a machine that also had ROS-related Python packages installed.
+- On a different machine, some packages may fail to install if the OS, CUDA, driver, or ROS stack is different.
+- If exact reproduction fails, start from the "Alternative setup" section, then add only the packages you actually need.
+
+3. GPU packages are included in requirements.tst.
+- Make sure the target machine has a compatible NVIDIA driver and CUDA runtime support.
+
+4. If torch or onnxruntime-gpu installation fails, install the GPU-compatible versions first, then rerun:
+
+   python -m pip install -r requirements.tst
+
+
+Validation
+
+After installation, you can verify the environment with:
+
+   python -V
+   python -m pip show torch torchvision timm albumentations
+
+Optional quick checks:
+
+   python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
+   python -c "from ultralytics import YOLO; print('ultralytics import ok')"
+
+
+Summary
+
+- For closest reproduction: use requirements.tst
+- For lighter setup: use pyproject.toml
+- For this repository to work correctly: install ./yolov12 in editable mode
