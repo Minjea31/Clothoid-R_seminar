@@ -18,10 +18,10 @@ logging.getLogger("ultralytics").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # True 이면 검출 결과 영상을 화면에 띄우고, False 이면 화면 출력 없이 ROS 토픽만 publish 합니다.
-SHOW_DETECTION_IMAGE = False
+SHOW_DETECTION_IMAGE = True
 
 # True 이면 검출 결과 로그 영역만 갱신해서 현재 상태만 깔끔하게 보여줍니다.
-# 초기화 로그(MODEL LOADED, yaml_cfg, pt_weights 등)는 그대로 유지됩니다.
+# 초기화 로그(MODEL LOADED, pt_weights 등)는 그대로 유지됩니다.
 CLEAR_TERMINAL_ON_DETECTION = False
 
 WINDOW_NAME = "YOLO BBox"
@@ -29,9 +29,14 @@ DEFAULT_SOURCE_TOPIC = "/camera/image_raw/compressed"
 DEFAULT_PUBLISH_TOPIC = "/perception/camera/yolo"
 DEFAULT_FRAME_ID = "camera_link"
 PACKAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-# 모델의 경로 입력.
-DEFAULT_YAML_CFG = os.path.join(PACKAGE_DIR, "models", "0524.yaml")
-DEFAULT_PT_WEIGHTS = os.path.join(PACKAGE_DIR, "models", "0524.pt")
+# 모델 checkpoint 경로 입력. pruned 구조는 .pt 내부 모델 객체에서 직접 로드합니다.
+DEFAULT_PT_WEIGHTS = os.path.join(PACKAGE_DIR, "models", "best.pt")
+DEFAULT_POSTPROCESS_NMS_IOU = 0.5
+DEFAULT_POSTPROCESS_CONTAINMENT_IOA = 0.8
+DEFAULT_POSTPROCESS_AREA_WEIGHT = 0.1
+DEFAULT_POSTPROCESS_MAX_DET = 0
+DEFAULT_POSTPROCESS_DEBUG = False
+
 
 # 클래스별 기본 설정입니다.
 # publish 값을 True로 둔 클래스만 /perception/camera/yolo 토픽으로 publish 합니다.
@@ -56,6 +61,130 @@ DEFAULT_CLASS_CONFIG = {
     },
 }
 
+def box_area(box):
+    return max(0.0, box["x2"] - box["x1"]) * max(0.0, box["y2"] - box["y1"])
+
+
+def intersection_area(a, b):
+    x1 = max(a["x1"], b["x1"])
+    y1 = max(a["y1"], b["y1"])
+    x2 = min(a["x2"], b["x2"])
+    y2 = min(a["y2"], b["y2"])
+    return max(0.0, x2 - x1) * max(0.0, y2 - y1)
+
+
+def iou(a, b):
+    inter = intersection_area(a, b)
+    if inter <= 0.0:
+        return 0.0
+    union = box_area(a) + box_area(b) - inter
+    return inter / union if union > 0.0 else 0.0
+
+
+def smaller_ioa(a, b):
+    smaller = min(box_area(a), box_area(b))
+    if smaller <= 0.0:
+        return 0.0
+    return intersection_area(a, b) / smaller
+
+
+def add_area_scores(detections, area_weight):
+    if not detections:
+        return []
+
+    max_area = max(box_area(det) for det in detections)
+    max_area = max(max_area, 1.0)
+    scored = []
+    for det in detections:
+        item = det.copy()
+        item["area"] = box_area(item)
+        item["score"] = item["conf"] + area_weight * (item["area"] / max_area)
+        scored.append(item)
+    return scored
+
+
+def area_aware_nms(detections, iou_threshold, area_weight):
+    pending = sorted(
+        add_area_scores(detections, area_weight),
+        key=lambda det: (det["score"], det["area"], det["conf"]),
+        reverse=True,
+    )
+    kept = []
+
+    while pending:
+        current = pending.pop(0)
+        kept.append(current)
+        pending = [
+            det for det in pending
+            if iou(current, det) <= iou_threshold
+        ]
+
+    return kept
+
+
+def containment_suppression(detections, ioa_threshold):
+    detections = sorted(
+        detections,
+        key=lambda det: (det["area"], det["score"], det["conf"]),
+        reverse=True,
+    )
+    suppressed = [False] * len(detections)
+
+    for i, large in enumerate(detections):
+        if suppressed[i]:
+            continue
+        for j, small in enumerate(detections):
+            if i == j or suppressed[j]:
+                continue
+            if large["area"] < small["area"]:
+                continue
+            if smaller_ioa(large, small) >= ioa_threshold:
+                suppressed[j] = True
+
+    return [
+        det for det, is_suppressed in zip(detections, suppressed)
+        if not is_suppressed
+    ]
+
+
+def postprocess_detections(
+    detections,
+    iou_threshold=0.5,
+    containment_ioa_threshold=0.8,
+    area_weight=0.1,
+    max_det=0,
+):
+    by_class = {}
+    for det in detections:
+        by_class.setdefault(det["cls_id"], []).append(det)
+
+    kept = []
+    for cls_id in sorted(by_class):
+        class_dets = by_class[cls_id]
+        class_kept = area_aware_nms(class_dets, iou_threshold, area_weight)
+        class_kept = containment_suppression(class_kept, containment_ioa_threshold)
+        kept.extend(class_kept)
+
+    kept = sorted(
+        kept,
+        key=lambda det: (
+            det.get("score", det["conf"]),
+            det.get("area", box_area(det)),
+            det["conf"],
+        ),
+        reverse=True,
+    )
+
+    if max_det and max_det > 0:
+        kept = kept[:max_det]
+
+    for det in kept:
+        det.pop("area", None)
+        det.pop("score", None)
+    return kept
+
+
+
 class YoloDetectNode:
     def __init__(self):
         rospy.init_node("yolo_detect_node")
@@ -68,9 +197,28 @@ class YoloDetectNode:
         self.previous_status_line_count = 0
         source_topic = rospy.get_param("~source", DEFAULT_SOURCE_TOPIC)
         publish_topic = rospy.get_param("~output_topic", DEFAULT_PUBLISH_TOPIC)
-        yaml_cfg = rospy.get_param("~yaml_cfg", DEFAULT_YAML_CFG)
         pt_weights = rospy.get_param("~pt_weights", DEFAULT_PT_WEIGHTS)
         self.frame_id = rospy.get_param("~frame_id", DEFAULT_FRAME_ID)
+        self.postprocess_nms_iou = rospy.get_param(
+            "~postprocess_nms_iou",
+            DEFAULT_POSTPROCESS_NMS_IOU,
+        )
+        self.postprocess_containment_ioa = rospy.get_param(
+            "~postprocess_containment_ioa",
+            DEFAULT_POSTPROCESS_CONTAINMENT_IOA,
+        )
+        self.postprocess_area_weight = rospy.get_param(
+            "~postprocess_area_weight",
+            DEFAULT_POSTPROCESS_AREA_WEIGHT,
+        )
+        self.postprocess_max_det = rospy.get_param(
+            "~postprocess_max_det",
+            rospy.get_param("~max_det", DEFAULT_POSTPROCESS_MAX_DET),
+        )
+        self.postprocess_debug = rospy.get_param(
+            "~postprocess_debug",
+            DEFAULT_POSTPROCESS_DEBUG,
+        )
         self.erp42_confidence = rospy.get_param(
             "~erp42_confidence",
             self.class_config[0]["confidence"],
@@ -100,9 +248,8 @@ class YoloDetectNode:
 
         self.pub = rospy.Publisher(publish_topic, Yolo_Objects, queue_size=1)
 
-        self.model = YOLO(yaml_cfg, task='detect').load(pt_weights)
+        self.model = YOLO(pt_weights, task="detect")
         rospy.loginfo(f"[yolo_detect_node] YOLOv12 MODEL LOADED")
-        rospy.loginfo(f"[yolo_detect_node] yaml_cfg: {yaml_cfg}")
         rospy.loginfo(f"[yolo_detect_node] pt_weights: {pt_weights}")
         rospy.loginfo(f"[yolo_detect_node] frame_id: {self.frame_id}")
         rospy.loginfo(
@@ -120,6 +267,14 @@ class YoloDetectNode:
         rospy.loginfo(
             f"[yolo_detect_node] publish_classes: "
             f"{sorted(self.publish_classes) if self.publish_classes else []}"
+        )
+        rospy.loginfo(
+            f"[yolo_detect_node] postprocess: "
+            f"nms_iou={self.postprocess_nms_iou}, "
+            f"containment_ioa={self.postprocess_containment_ioa}, "
+            f"area_weight={self.postprocess_area_weight}, "
+            f"max_det={self.postprocess_max_det}, "
+            f"debug={self.postprocess_debug}"
         )
 
         rospy.Subscriber(source_topic,
@@ -162,8 +317,6 @@ class YoloDetectNode:
         total_boxes = len(results.boxes)
         status_lines = []
         publish_candidates = []
-        if total_boxes == 0:
-            status_lines.append("[yolo_detect_node] NO DETECT")
 
         for box in results.boxes:
             cls_id = int(box.cls.cpu().item())
@@ -186,7 +339,23 @@ class YoloDetectNode:
                 "y2": y2,
             })
 
-        if total_boxes > 0 and not publish_candidates:
+        filtered_count = len(publish_candidates)
+        publish_candidates = postprocess_detections(
+            publish_candidates,
+            iou_threshold=self.postprocess_nms_iou,
+            containment_ioa_threshold=self.postprocess_containment_ioa,
+            area_weight=self.postprocess_area_weight,
+            max_det=self.postprocess_max_det,
+        )
+
+        if self.postprocess_debug:
+            rospy.loginfo(
+                "[yolo_detect_node] postprocess boxes: "
+                f"raw={total_boxes}, class_conf={filtered_count}, "
+                f"final={len(publish_candidates)}"
+            )
+
+        if not publish_candidates:
             status_lines.append("[yolo_detect_node] NO DETECT")
 
         for candidate in publish_candidates:
