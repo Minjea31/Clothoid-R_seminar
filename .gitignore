@@ -1,0 +1,10 @@
+build/
+devel/
+.idea/
+.vscode/
+
+*.bag
+*.tmp
+
+0517bag
+perception_ws/sorry_sunwoo.bag
