@@ -29,7 +29,8 @@ DEFAULT_SOURCE_TOPIC = "/camera/image_raw/compressed"
 DEFAULT_PUBLISH_TOPIC = "/perception/camera/yolo"
 DEFAULT_FRAME_ID = "camera_link"
 PACKAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-# 모델 checkpoint 경로 입력. pruned 구조는 .pt 내부 모델 객체에서 직접 로드합니다.
+# 모델 구조는 yaml에서 만들고, checkpoint는 weight 로딩에만 사용합니다.
+DEFAULT_YAML_CFG = os.path.join(PACKAGE_DIR, "models", "best.yaml")
 DEFAULT_PT_WEIGHTS = os.path.join(PACKAGE_DIR, "models", "best.pt")
 DEFAULT_POSTPROCESS_NMS_IOU = 0.5
 DEFAULT_POSTPROCESS_CONTAINMENT_IOA = 0.8
@@ -197,6 +198,7 @@ class YoloDetectNode:
         self.previous_status_line_count = 0
         source_topic = rospy.get_param("~source", DEFAULT_SOURCE_TOPIC)
         publish_topic = rospy.get_param("~output_topic", DEFAULT_PUBLISH_TOPIC)
+        yaml_cfg = rospy.get_param("~yaml_cfg", DEFAULT_YAML_CFG)
         pt_weights = rospy.get_param("~pt_weights", DEFAULT_PT_WEIGHTS)
         self.frame_id = rospy.get_param("~frame_id", DEFAULT_FRAME_ID)
         self.postprocess_nms_iou = rospy.get_param(
@@ -248,8 +250,9 @@ class YoloDetectNode:
 
         self.pub = rospy.Publisher(publish_topic, Yolo_Objects, queue_size=1)
 
-        self.model = YOLO(pt_weights, task="detect")
+        self.model = YOLO(yaml_cfg, task="detect").load(pt_weights)
         rospy.loginfo(f"[yolo_detect_node] YOLOv12 MODEL LOADED")
+        rospy.loginfo(f"[yolo_detect_node] yaml_cfg: {yaml_cfg}")
         rospy.loginfo(f"[yolo_detect_node] pt_weights: {pt_weights}")
         rospy.loginfo(f"[yolo_detect_node] frame_id: {self.frame_id}")
         rospy.loginfo(
