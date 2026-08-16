@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local config
+.env
+.env.*
+
+# Datasets
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# Training outputs
+runs/
+checkpoints/
+checkoints/
+weights/
+wandb/
+mlruns/
+tensorboard/
+
+# Model weights and exports
+*.pt
+*.yaml
+*.pth
+*.ckpt
+*.onnx
+*.engine
+*.torchscript
+*.tflite
+*.pb
+*.h5
+*.mlmodel
+*.safetensors
+
+# Generated pruning artifacts
+prune_info/
+*.cache
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
